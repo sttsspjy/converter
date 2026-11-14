@@ -1,0 +1,17 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: pip install -r requirements.txt
+      # The end-to-end encode tests (tests/test_pipeline.py) need ffmpeg + opusenc; run them locally.
+      - run: python -m unittest tests.test_plan tests.test_fetch -v

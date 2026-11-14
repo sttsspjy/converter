@@ -1,0 +1,8 @@
+.venv/
+bin/
+build/
+dist/
+packaging/version_info.txt
+__pycache__/
+*.pyc
+.claude/

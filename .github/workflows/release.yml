@@ -1,0 +1,43 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: pip install -r requirements.txt pyinstaller
+
+      - name: Tag must match converter.__version__
+        shell: pwsh
+        run: |
+          $v = python -c "import converter; print(converter.__version__)"
+          if ("v$v" -ne "${{ github.ref_name }}") { throw "Tag ${{ github.ref_name }} does not match version $v" }
+
+      - run: python -m unittest tests.test_plan tests.test_fetch
+
+      - name: Make sure Inno Setup is available
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - run: python packaging/build.py
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          $exe = "dist/Converter-Setup-$v.exe"
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          $notes = (Get-Content packaging/release-notes.md -Raw) + "`n`nSHA-256 of the installer: ``$sha``"
+          gh release create "${{ github.ref_name }}" $exe --title "Converter $v" --notes "$notes"

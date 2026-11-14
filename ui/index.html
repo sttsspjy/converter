@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Converter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="toolbar">
+      <div class="toolbar-actions">
+        <button class="btn" id="add-files" title="Add files (Ctrl+O)">
+          <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Add files
+        </button>
+        <button class="btn" id="add-folder" title="Add a folder, including subfolders">
+          <svg viewBox="0 0 16 16"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg>Add folder
+        </button>
+      </div>
+      <div class="queue-count" id="queue-count"></div>
+      <button class="update-pill" id="update-pill" hidden></button>
+      <div class="toolbar-actions right">
+        <button class="btn quiet" id="clear-done" hidden>Clear finished</button>
+        <button class="btn quiet" id="clear-all" hidden>Clear all</button>
+      </div>
+    </header>
+
+    <main class="queue" id="queue">
+      <section class="empty" id="empty">
+        <div class="empty-mark" aria-hidden="true">
+          <span style="--c: var(--video)"></span><span style="--c: var(--gif)"></span><span style="--c: var(--audio)"></span><span style="--c: var(--image)"></span>
+        </div>
+        <h1>Drop files or folders here</h1>
+        <p>Videos get re-encoded, GIFs get compressed, music becomes Opus with tags and cover art intact.
+          Drop a whole album folder to do every track.</p>
+        <div class="empty-actions">
+          <button class="btn" data-action="add-files">Choose files</button>
+          <button class="btn" data-action="add-folder">Choose a folder</button>
+        </div>
+        <button class="about" id="about"></button>
+      </section>
+      <section class="empty setup" id="setup" hidden>
+        <div class="empty-mark" aria-hidden="true">
+          <span style="--c: var(--video)"></span><span style="--c: var(--gif)"></span><span style="--c: var(--audio)"></span><span style="--c: var(--image)"></span>
+        </div>
+        <h1>One download before you start</h1>
+        <p>Converter uses <b>ffmpeg</b> for the encoding and <b>opusenc</b> for Opus audio. It can fetch both from their
+          official builds (<span id="setup-size"></span>), check them against a fixed checksum, and keep them in its own folder.</p>
+        <div class="setup-progress" id="setup-progress" hidden>
+          <div class="sizebar"><i id="setup-bar"></i></div>
+          <div class="setup-status" id="setup-status"></div>
+        </div>
+        <p class="setup-error" id="setup-error" hidden></p>
+        <div class="empty-actions" id="setup-actions">
+          <button class="btn primary" id="setup-go">Download</button>
+        </div>
+        <button class="btn quiet" id="setup-cancel" hidden>Cancel</button>
+        <p class="setup-alt">Already have ffmpeg? Put <code>ffmpeg.exe</code> and <code>ffprobe.exe</code> on your PATH and restart Converter.</p>
+      </section>
+      <ul class="rows" id="rows"></ul>
+    </main>
+
+    <aside class="panel" id="panel">
+      <nav class="tabs" id="tabs" role="tablist"></nav>
+      <div class="panel-body" id="panel-body"></div>
+    </aside>
+
+    <footer class="bar">
+      <div class="dest">
+        <span class="dest-label">Save to</span>
+        <div class="seg small" id="dest-mode">
+          <button data-v="beside">Next to originals</button>
+          <button data-v="folder">Folder</button>
+        </div>
+        <button class="path-btn" id="dest-folder" title="Choose output folder"></button>
+        <label class="dest-conflict">If it exists
+          <select id="conflict">
+            <option value="rename">Add a number</option>
+            <option value="skip">Skip</option>
+            <option value="overwrite">Replace</option>
+          </select>
+        </label>
+      </div>
+      <div class="totals" id="totals"></div>
+      <button class="btn ghost-danger" id="cancel-all" hidden>Cancel all</button>
+      <button class="btn primary" id="start" disabled>Convert</button>
+    </footer>
+  </div>
+
+  <div class="drop-overlay" id="drop-overlay"><div>Drop to add</div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <dialog class="trim" id="trim">
+    <form method="dialog" class="trim-inner">
+      <header>
+        <h2 id="trim-title">Trim</h2>
+        <button class="icon-btn" value="cancel" title="Close (Esc)"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </header>
+      <div class="trim-stage">
+        <video id="trim-video" controls preload="auto"></video>
+        <img id="trim-frame" alt="" hidden>
+      </div>
+      <div class="trim-range" id="trim-range">
+        <div class="trim-fill" id="trim-fill"></div>
+        <input type="range" id="trim-a" min="0" max="1000" step="1" aria-label="Start">
+        <input type="range" id="trim-b" min="0" max="1000" step="1" aria-label="End">
+      </div>
+      <div class="trim-controls">
+        <div class="trim-point">
+          <label for="trim-start">Start</label>
+          <input id="trim-start" class="time" spellcheck="false">
+          <button type="button" class="btn small" id="trim-set-start">Use current</button>
+        </div>
+        <div class="trim-length" id="trim-length"></div>
+        <div class="trim-point end">
+          <button type="button" class="btn small" id="trim-set-end">Use current</button>
+          <input id="trim-end" class="time" spellcheck="false">
+          <label for="trim-end">End</label>
+        </div>
+      </div>
+      <footer>
+        <button type="button" class="btn quiet" id="trim-reset">Use whole video</button>
+        <span class="spacer"></span>
+        <button class="btn" value="cancel">Cancel</button>
+        <button class="btn primary" value="ok" id="trim-ok" autofocus>Apply</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script>window.__errs = []; addEventListener("error", (e) => __errs.push(e.message)); addEventListener("unhandledrejection", (e) => __errs.push(String(e.reason)));</script>
+  <script src="app.js"></script>
+</body>
+</html>
